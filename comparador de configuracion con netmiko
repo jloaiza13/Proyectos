@@ -1,0 +1,62 @@
+from netmiko import ConnectHandler
+from getpass import getpass
+
+# Solicitar la dirección IP y las credenciales del primer dispositivo
+ip1 = input("Ingrese la dirección IP del primer dispositivo: ")
+username1 = input("Ingrese el nombre de usuario del primer dispositivo: ")
+password1 = getpass("Ingrese la contraseña del primer dispositivo: ")
+
+# Solicitar la dirección IP y las credenciales del segundo dispositivo
+ip2 = input("Ingrese la dirección IP del segundo dispositivo: ")
+username2 = input("Ingrese el nombre de usuario del segundo dispositivo: ")
+password2 = getpass("Ingrese la contraseña del segundo dispositivo: ")
+
+# Definir la información de conexión para el primer dispositivo
+device1 = {
+    "device_type": "cisco_ios",
+    "ip": ip1,
+    "username": username1,
+    "password": password1,
+}
+
+# Definir la información de conexión para el segundo dispositivo
+device2 = {
+    "device_type": "cisco_ios",
+    "ip": ip2,
+    "username": username2,
+    "password": password2,
+}
+
+# Establecer la conexión con el primer dispositivo
+conn1 = ConnectHandler(**device1)
+
+# Establecer la conexión con el segundo dispositivo
+conn2 = ConnectHandler(**device2)
+
+# Obtener la configuración del primer dispositivo
+config1 = conn1.send_command("show running-config")
+
+# Obtener la configuración del segundo dispositivo
+config2 = conn2.send_command("show running-config")
+
+# Cerrar la conexión con ambos dispositivos
+conn1.disconnect()
+conn2.disconnect()
+
+# Dividir la configuración en líneas
+config_lines1 = config1.splitlines()
+config_lines2 = config2.splitlines()
+
+# Encontrar las diferencias entre las configuraciones
+diff1 = [line for line in config_lines1 if line not in config_lines2]
+diff2 = [line for line in config_lines2 if line not in config_lines1]
+
+# Imprimir las diferencias en un formato legible
+if diff1 or diff2:
+    print("Diferencias en la configuración del equipo 1:")
+    print("\n".join(diff1))
+    print("\n")
+    print("Diferencias en la configuración del equipo 2:")
+    print("\n".join(diff2))
+else:
+    print("No se encontraron diferencias en la configuración.")
