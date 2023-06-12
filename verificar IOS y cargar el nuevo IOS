@@ -1,0 +1,65 @@
+from netmiko import ConnectHandler
+
+# Archivo de texto con las direcciones IP de los dispositivos
+file_path = "dispositivos.txt"
+
+# Versión de iOS deseada
+ios_version_deseada = "15.2(20170321:233949) [mmen 101]"
+
+# Archivo iOS requerido
+ios_file_requerido = "vios_l2-adventerprisek9-m"
+
+# Comando de arranque alternativo
+boot_system_alternativo = "boot system flash:c2600-adventerprisek9-mz.124-12.bin"
+
+# Solicitar las credenciales al usuario
+username = input("Ingrese el nombre de usuario: ")
+password = input("Ingrese la contraseña: ")
+enable_password = input("Ingrese la contraseña de habilitación: ")
+
+# Leer las direcciones IP de los dispositivos desde el archivo
+with open(file_path, "r") as file:
+    ip_list = file.read().splitlines()
+
+# Recorrer las direcciones IP de los dispositivos
+for ip in ip_list:
+    # Información de conexión al dispositivo
+    device = {
+        "device_type": "cisco_ios",
+        "ip": ip,
+        "username": username,
+        "password": password,
+        "secret": enable_password,  # Contraseña de habilitación
+    }
+
+    # Conexión al dispositivo
+    conn = ConnectHandler(**device)
+
+    # Obtener la versión de iOS del dispositivo
+    output = conn.send_command("show version")
+    lines = output.splitlines()
+    ios_version = None
+
+    for line in lines:
+        if "Cisco IOS Software" in line:
+            ios_version = line.split("Version ")[1].strip()
+            break
+
+    # Verificar la versión de iOS y el archivo iOS requerido
+    if ios_version == ios_version_deseada:
+        print(f"\nLa versión de iOS del dispositivo {ip} coincide con la versión deseada.")
+    else:
+        output = conn.send_command("dir flash:")
+        if ios_file_requerido in output:
+            print(f"\nLa versión de iOS del dispositivo {ip} no coincide, pero el archivo '{ios_file_requerido}' está presente.")
+        else:
+            print(f"\nLa versión de iOS del dispositivo {ip} no coincide y el archivo '{ios_file_requerido}' no está presente.")
+            print(f"Ejecutando el comando '{boot_system_alternativo}'...")
+            conn.enable()
+            conn.send_command(f"configure terminal")
+            conn.send_command(f"{boot_system_alternativo}")
+            conn.send_command(f"end")
+            conn.send_command(f"write")
+
+    # Cerrar la conexión
+    conn.disconnect()
